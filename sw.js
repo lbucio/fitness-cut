@@ -7,6 +7,9 @@ const ASSETS = [
   './icons/icon-512.png',
   './icons/apple-touch-icon.png'
 ];
+// Note: Tesseract.js and its language data load from a CDN at runtime and are
+// intentionally not pre-cached here — they're fetched (and then browser-cached)
+// the first time OCR is used, per the README.
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

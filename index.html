@@ -148,6 +148,14 @@
   .parse-hint { font-size: 11.5px; color: var(--text-soft); margin: 7px 0 12px; font-weight: 500; }
   .parse-preview { display: none; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; font-size: 12px; }
   .parse-preview.show { display: flex; }
+
+  .image-upload-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .image-thumb {
+    width: 40px; height: 40px; border-radius: 8px; object-fit: cover;
+    display: none;
+  }
+  .image-thumb.show { display: block; }
+  .ocr-status { font-size: 11.5px; color: var(--text-soft); margin: 6px 0 12px; font-weight: 600; min-height: 14px; }
   .parse-chip { background: var(--card-2); border-radius: 7px; padding: 5px 10px; font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace; font-weight: 700; }
 
   button.primary {
@@ -187,6 +195,7 @@
 </style>
 </head>
 <body>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 <div id="app-root"></div>
 
 <script>
@@ -580,9 +589,15 @@
             <div class="quickset-btn" id="qs-walk">${state.targets.walkMiles} mi walk</div>
           </div>
 
-          <label class="field-label">Paste from MyFitnessPal</label>
-          <textarea class="paste-box" id="mfp-paste" placeholder="Paste today's Nutrition summary from MyFitnessPal here"></textarea>
-          <div class="parse-hint">Copy your day's totals from MyFitnessPal's Nutrition screen, paste above, then parse.</div>
+          <label class="field-label">Log from MyFitnessPal</label>
+          <div class="image-upload-row">
+            <input type="file" id="mfp-image-input" accept="image/*" style="display:none;">
+            <button class="secondary" id="mfp-image-btn">\uD83D\uDCF7 Upload screenshot</button>
+            <img class="image-thumb" id="mfp-image-thumb" alt="">
+          </div>
+          <textarea class="paste-box" id="mfp-paste" placeholder="Or paste a screenshot (Ctrl/Cmd+V) or the text summary from MyFitnessPal here"></textarea>
+          <div class="ocr-status" id="ocr-status"></div>
+          <div class="parse-hint">Upload or paste a screenshot of your Nutrition summary, or paste the text \u2014 either works. Then tap Parse macros.</div>
           <button class="secondary" id="mfp-parse-btn" style="margin-bottom:6px;">Parse macros</button>
           <div class="parse-preview" id="parse-preview"></div>
           <div class="row" style="margin-top:14px;">
@@ -618,9 +633,9 @@
     document.getElementById('qs-wmin').onclick = () => { document.getElementById('in-wmin').value = state.targets.workoutMinutes; };
     document.getElementById('qs-walk').onclick = () => { document.getElementById('in-walk').value = state.targets.walkMiles; };
 
-    document.getElementById('mfp-parse-btn').onclick = () => {
+    function runParse() {
       const text = document.getElementById('mfp-paste').value;
-      if (!text.trim()) { showToast('Paste your MFP summary first'); return; }
+      if (!text.trim()) { showToast('Paste or scan your MFP summary first'); return; }
       const parsed = parseMacroText(text);
       if (parsed.calories != null) document.getElementById('in-cal').value = parsed.calories;
       if (parsed.protein != null) document.getElementById('in-protein').value = parsed.protein;
@@ -636,7 +651,49 @@
         preview.classList.add('show');
         showToast('Parsed — check the fields below');
       }
+    }
+
+    document.getElementById('mfp-parse-btn').onclick = runParse;
+
+    async function runOCR(file) {
+      const statusEl = document.getElementById('ocr-status');
+      const thumb = document.getElementById('mfp-image-thumb');
+      thumb.src = URL.createObjectURL(file);
+      thumb.classList.add('show');
+      statusEl.textContent = 'Reading screenshot\u2026 this can take a few seconds';
+      try {
+        if (typeof Tesseract === 'undefined') {
+          statusEl.textContent = 'OCR library still loading (needs internet the first time) \u2014 wait a moment and try again, or paste text instead.';
+          return;
+        }
+        const { data } = await Tesseract.recognize(file, 'eng');
+        const text = (data && data.text) || '';
+        document.getElementById('mfp-paste').value = text;
+        statusEl.textContent = 'Screenshot read \u2014 parsing macros\u2026';
+        runParse();
+        statusEl.textContent = 'Done \u2014 double check the numbers below match your screenshot.';
+      } catch (err) {
+        console.warn('fitnesscut: OCR error', err);
+        statusEl.textContent = 'Could not read that screenshot \u2014 try again, or paste the text summary instead.';
+      }
+    }
+
+    document.getElementById('mfp-image-btn').onclick = () => document.getElementById('mfp-image-input').click();
+    document.getElementById('mfp-image-input').onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) runOCR(file);
     };
+    document.getElementById('mfp-paste').addEventListener('paste', (e) => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type && item.type.indexOf('image/') === 0) {
+          const file = item.getAsFile();
+          if (file) { e.preventDefault(); runOCR(file); }
+          break;
+        }
+      }
+    });
 
     document.getElementById('submit-entry').onclick = () => {
       const date = document.getElementById('in-date').value;

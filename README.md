@@ -31,6 +31,18 @@ A daily weight, macro, and training tracker — installable as a full-screen app
 1. Open the URL in Chrome.
 2. You should see an **Install** banner appear in the app itself, or use Chrome's menu (⋮) → **Add to Home screen** / **Install app**.
 
+## Logging macros from MyFitnessPal
+
+In the "Log from MyFitnessPal" section of the daily check-in, you can either:
+- **Upload or paste a screenshot** of your MyFitnessPal Nutrition summary — the app reads the numbers off the image automatically (on-device text recognition, powered by Tesseract.js).
+- **Paste the text summary** instead, if you'd rather copy/paste than screenshot.
+
+Either way, tap **Parse macros** afterward to double-check the numbers landed in the right fields before logging.
+
+Notes on the screenshot feature:
+- The **first time** you use it, your phone needs an internet connection to download the text-recognition engine (a few MB). After that it's cached and works offline.
+- It's not perfect — always glance at the parsed numbers against your screenshot before hitting "Log today," and correct anything it misread.
+
 ## Notes on your data
 
 - Your check-ins are stored in your **browser's local storage** on whichever device you use — nothing is sent to a server, and nobody but you can see it.
