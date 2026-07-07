@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>FitnessCut</title>
+<meta name="description" content="Daily weight, macro, and training tracker for your cut.">
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+
+<!-- iOS home screen support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitnessCut">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+
+<style>
+  :root {
+    --bg: #000000;
+    --card: #1C1C1E;
+    --card-2: #232325;
+    --text: #FFFFFF;
+    --text-soft: #98989D;
+    --text-dim: #636366;
+    --red: #FF375F;
+    --green: #A6FF3D;
+    --cyan: #35E0E0;
+    --purple: #B073FF;
+    --pink: #FF2FA6;
+    --amber: #FFB340;
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --radius-sm: 9px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: #000000;
+    margin: 0;
+    min-height: 100%;
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  #app-root { min-height: 100vh; }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding: 22px 16px 60px; }
+
+  h1.page-title { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 2px; }
+  .page-sub { color: var(--text-soft); font-size: 15px; margin-bottom: 18px; font-weight: 500; }
+
+  .warn-banner {
+    font-size: 12.5px; color: var(--amber);
+    border: 1px solid rgba(255,179,64,0.4);
+    background: rgba(255,179,64,0.08);
+    border-radius: var(--radius-sm);
+    padding: 9px 13px; margin-bottom: 14px;
+  }
+
+  .card { background: var(--card); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 14px; }
+  .card-title { font-size: 19px; font-weight: 750; letter-spacing: -0.01em; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+
+  .rings-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .rings-svg-wrap { width: 168px; flex-shrink: 0; }
+  .ring-stats { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 14px; }
+  .ring-stat-label { font-size: 14.5px; font-weight: 650; margin-bottom: 1px; }
+  .ring-stat-value { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; }
+  .ring-stat-value .unit { font-size: 13px; font-weight: 700; margin-left: 3px; color: var(--text-soft); }
+
+  .chart-stats { display: flex; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
+  .stat-block { min-width: 76px; }
+  .stat-num { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+  .stat-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-soft); font-weight: 700; }
+  svg.elev { width: 100%; height: auto; display: block; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 480px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .metric-card { background: var(--card); border-radius: var(--radius-lg); padding: 16px; }
+  .metric-head { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+  .metric-sub { font-size: 12px; color: var(--text-soft); font-weight: 600; margin-bottom: 2px; }
+  .metric-big { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .metric-big .unit { font-size: 13px; font-weight: 700; color: var(--text-soft); margin-left: 3px; }
+
+  .mini-bars { display: flex; align-items: flex-end; gap: 4px; height: 46px; }
+  .mini-bar { flex: 1; border-radius: 3px; background: var(--card-2); position: relative; min-height: 4px; }
+  .mini-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 3px; }
+  .mini-bar-label { font-size: 9.5px; color: var(--text-dim); text-align: center; margin-top: 4px; font-weight: 700; }
+  .mini-bar-labels { display: flex; gap: 4px; }
+  .mini-bar-labels > div { flex: 1; }
+
+  .status-pill-row { display: flex; align-items: center; gap: 12px; }
+  .status-icon { width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .status-text-main { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+  .status-text-sub { font-size: 12.5px; color: var(--text-soft); font-weight: 600; margin-top: 1px; }
+
+  .hist-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-icon { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .hist-main { flex: 1; min-width: 0; }
+  .hist-date { font-size: 14.5px; font-weight: 700; }
+  .hist-meta { font-size: 12px; color: var(--text-soft); font-weight: 600; margin-top: 1px; }
+  .hist-right { text-align: right; font-size: 13px; font-weight: 700; color: var(--text-soft); flex-shrink: 0; }
+  .empty-note { font-size: 13px; color: var(--text-soft); padding: 4px 0; }
+
+  label.field-label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); margin-bottom: 6px; font-weight: 700; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .field { flex: 1; min-width: 130px; }
+  input[type=number], input[type=date] {
+    width: 100%; padding: 11px 12px; border: none; border-radius: var(--radius-sm);
+    background: var(--card-2); font-size: 15px; color: var(--text); font-weight: 600;
+  }
+  input:focus { outline: 2px solid var(--green); outline-offset: 1px; }
+
+  .quickset-row { display: flex; gap: 8px; margin: -6px 0 14px; }
+  .quickset-btn {
+    padding: 7px 12px; border-radius: 999px; border: none;
+    background: var(--card-2); color: var(--text-soft);
+    font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .quickset-btn:hover { background: #2A2A2C; color: var(--text); }
+
+  textarea.paste-box {
+    width: 100%; min-height: 66px; padding: 12px; border: none; border-radius: var(--radius-sm);
+    background: var(--card-2); color: var(--text);
+    font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace; font-size: 12.5px; resize: vertical;
+  }
+  textarea.paste-box:focus { outline: 2px solid var(--green); outline-offset: 1px; }
+
+  button.secondary { background: var(--card-2); color: var(--green); border: none; padding: 9px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
+  button.secondary:hover { background: #2A2A2C; }
+
+  .parse-hint { font-size: 11.5px; color: var(--text-soft); margin: 7px 0 12px; font-weight: 500; }
+  .parse-preview { display: none; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; font-size: 12px; }
+  .parse-preview.show { display: flex; }
+  .parse-chip { background: var(--card-2); border-radius: 7px; padding: 5px 10px; font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace; font-weight: 700; }
+
+  button.primary {
+    background: var(--green); color: #0A1400; border: none; padding: 13px 18px;
+    border-radius: var(--radius-md); font-size: 15px; font-weight: 750; letter-spacing: -0.01em;
+    cursor: pointer; width: 100%;
+  }
+  button.primary:hover { filter: brightness(1.08); }
+  button.primary:disabled { background: var(--text-dim); cursor: not-allowed; }
+
+  .toast {
+    position: fixed; bottom: calc(18px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+    background: var(--card); color: var(--green); padding: 10px 18px; border-radius: 999px;
+    font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 10;
+  }
+  .toast.show { opacity: 1; }
+
+  .setup-overlay { display: flex; flex-direction: column; gap: 10px; }
+  a.reset-link { font-size: 12px; color: var(--text-dim); text-decoration: underline; cursor: pointer; display: inline-block; margin-top: 8px; }
+
+  .install-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-size: 13px;
+  }
+  .install-banner.show { display: flex; }
+  .install-banner button {
+    background: var(--green); color: #0A1400; border: none;
+    padding: 8px 14px; border-radius: 999px; font-weight: 750; font-size: 12.5px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div id="app-root"></div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'fitnesscut-tracker-data';
+  const DEFAULTS = {
+    startWeight: 210,
+    goalWeight: 185,
+    startDate: new Date().toISOString().slice(0, 10),
+    targets: { calories: 2450, protein: 202, fat: 67, carbs: 270, workoutMinutes: 45, walkMiles: 2 },
+    entries: []
+  };
+
+  let state = null;
+  let loading = true;
+  let storageOK = true;
+  let deferredInstallPrompt = null;
+
+  const root = document.getElementById('app-root');
+
+  function fmt1(n) { return Math.round(n * 10) / 10; }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
+  function weekIndexOf(dateStr) { return Math.floor(daysBetween(state.startDate, dateStr) / 7); }
+  function clampPct(n) { return Math.max(0, Math.min(100, n)); }
+
+  function loadState() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        state = JSON.parse(raw);
+        if (!Array.isArray(state.entries)) state.entries = [];
+        if (!state.targets.workoutMinutes) state.targets.workoutMinutes = 45;
+        if (!state.targets.walkMiles) state.targets.walkMiles = 2;
+        state.entries = state.entries.filter(e => typeof e.date === 'string').map(e => ({
+          date: e.date,
+          weight: e.weight != null ? e.weight : null,
+          workoutMinutes: e.workoutMinutes != null ? e.workoutMinutes : (e.workout ? 45 : 0),
+          walkMiles: e.walkMiles != null ? e.walkMiles : (e.walked ? 2 : 0),
+          calories: e.calories || 0,
+          protein: e.protein || 0,
+          fat: e.fat || 0,
+          carbs: e.carbs || 0
+        }));
+      } else {
+        state = null;
+      }
+      storageOK = true;
+    } catch (e) {
+      console.warn('fitnesscut: localStorage read error', e);
+      state = null;
+      storageOK = false;
+    }
+    loading = false;
+    render();
+  }
+
+  function saveState() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      storageOK = true;
+      return true;
+    } catch (e) {
+      console.warn('fitnesscut: localStorage write error', e);
+      storageOK = false;
+      showToast('Could not save — check browser storage settings');
+      return false;
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 1800);
+  }
+
+  function sortedEntries() { return state.entries.slice().sort((a, b) => a.date.localeCompare(b.date)); }
+
+  function currentWeight() {
+    const withWeight = sortedEntries().filter(e => e.weight != null);
+    if (!withWeight.length) return state.startWeight;
+    return withWeight[withWeight.length - 1].weight;
+  }
+
+  function todayEntry() { return state.entries.find(e => e.date === todayStr()) || null; }
+
+  function thisWeekEntries() {
+    const idx = weekIndexOf(todayStr());
+    return state.entries.filter(e => weekIndexOf(e.date) === idx);
+  }
+
+  function projectedWeeksRemaining() {
+    const withWeight = sortedEntries().filter(e => e.weight != null);
+    if (withWeight.length < 2) return null;
+    const recent = withWeight.slice(-6);
+    const first = recent[0], last = recent[recent.length - 1];
+    const daySpan = daysBetween(first.date, last.date);
+    if (daySpan <= 0) return null;
+    const lossPerWeek = ((first.weight - last.weight) / daySpan) * 7;
+    if (lossPerWeek <= 0) return null;
+    const remaining = last.weight - state.goalWeight;
+    if (remaining <= 0) return 0;
+    return Math.ceil(remaining / lossPerWeek);
+  }
+
+  function weeklyWeightBuckets() {
+    const withWeight = sortedEntries().filter(e => e.weight != null);
+    const buckets = {};
+    withWeight.forEach(e => { buckets[weekIndexOf(e.date)] = e.weight; });
+    const maxIdx = Math.max(0, ...Object.keys(buckets).map(Number));
+    const points = [{ week: 0, weight: state.startWeight }];
+    for (let i = 1; i <= maxIdx; i++) { if (buckets[i] != null) points.push({ week: i, weight: buckets[i] }); }
+    return { points, maxIdx };
+  }
+
+  function buildElevationSVG() {
+    const w = 700, h = 180, padL = 44, padR = 16, padT = 16, padB = 24;
+    const innerW = w - padL - padR, innerH = h - padT - padB;
+    const { points, maxIdx } = weeklyWeightBuckets();
+    const totalWeeksAxis = Math.max(maxIdx, 8);
+    const yMax = state.startWeight + 3;
+    const yMin = state.goalWeight - 3;
+    function xOf(week) { return padL + (week / totalWeeksAxis) * innerW; }
+    function yOf(weight) { return padT + ((yMax - weight) / (yMax - yMin)) * innerH; }
+
+    let pathD = '';
+    points.forEach((p, i) => { pathD += `${i === 0 ? 'M' : 'L'}${xOf(p.week).toFixed(1)},${yOf(p.weight).toFixed(1)} `; });
+    const fillD = pathD + `L${xOf(points[points.length - 1].week).toFixed(1)},${(padT + innerH).toFixed(1)} L${xOf(0).toFixed(1)},${(padT + innerH).toFixed(1)} Z`;
+    const goalY = yOf(state.goalWeight).toFixed(1);
+    const lastPt = points[points.length - 1];
+
+    return `
+    <svg class="elev" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="terrain" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FF375F" stop-opacity="0.30"/>
+          <stop offset="100%" stop-color="#FF375F" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      <line x1="${padL}" y1="${goalY}" x2="${w - padR}" y2="${goalY}" stroke="#FFB340" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="${w - padR}" y="${Number(goalY) - 5}" text-anchor="end" font-size="10" fill="#FFB340" font-family="monospace" font-weight="700">GOAL ${state.goalWeight}</text>
+      <text x="${padL - 8}" y="${padT + 4}" text-anchor="end" font-size="9.5" fill="#98989D" font-family="monospace">${yMax}</text>
+      <text x="${padL - 8}" y="${padT + innerH + 4}" text-anchor="end" font-size="9.5" fill="#98989D" font-family="monospace">${yMin}</text>
+      <path d="${fillD}" fill="url(#terrain)"/>
+      <path d="${pathD.trim()}" fill="none" stroke="#FF375F" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${xOf(lastPt.week).toFixed(1)}" cy="${yOf(lastPt.weight).toFixed(1)}" r="4.5" fill="#FF375F" stroke="#1C1C1E" stroke-width="1.5"/>
+      <text x="${xOf(0).toFixed(1)}" y="${h - 6}" font-size="9.5" fill="#98989D" font-family="monospace">START</text>
+      <text x="${w - padR}" y="${h - 6}" text-anchor="end" font-size="9.5" fill="#98989D" font-family="monospace">WK ${totalWeeksAxis}</text>
+    </svg>`;
+  }
+
+  function ringArc(cx, cy, r, pct, color, bgColor) {
+    const circumference = 2 * Math.PI * r;
+    const offset = circumference * (1 - clampPct(pct) / 100);
+    return `
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${bgColor}" stroke-width="16"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="16"
+        stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+        style="transform:rotate(-90deg); transform-origin:${cx}px ${cy}px;"/>
+    `;
+  }
+
+  function buildRingsSVG(pctCal, pctWorkout, pctWalk) {
+    return `
+    <svg viewBox="0 0 200 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      ${ringArc(100, 100, 84, pctCal, '#FF375F', '#3A1420')}
+      ${ringArc(100, 100, 62, pctWorkout, '#A6FF3D', '#25301A')}
+      ${ringArc(100, 100, 40, pctWalk, '#35E0E0', '#123A3A')}
+    </svg>`;
+  }
+
+  function renderSetup() {
+    root.innerHTML = `
+      <div class="wrap">
+        <h1 class="page-title">Set your target</h1>
+        <div class="page-sub">Enter your starting weight and goal to begin cutting.</div>
+        <div class="card setup-overlay">
+          <div class="row">
+            <div class="field"><label class="field-label">Current weight (lb)</label><input type="number" id="su-start" value="210" step="0.1"></div>
+            <div class="field"><label class="field-label">Goal weight (lb)</label><input type="number" id="su-goal" value="185" step="0.1"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label class="field-label">Daily calorie target</label><input type="number" id="su-cal" value="2450"></div>
+            <div class="field"><label class="field-label">Protein target (g)</label><input type="number" id="su-protein" value="202"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label class="field-label">Fat target (g)</label><input type="number" id="su-fat" value="67"></div>
+            <div class="field"><label class="field-label">Carb target (g)</label><input type="number" id="su-carbs" value="270"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label class="field-label">Daily workout minutes target</label><input type="number" id="su-wmin" value="45"></div>
+            <div class="field"><label class="field-label">Daily walk distance target (mi)</label><input type="number" id="su-walk" value="2" step="0.1"></div>
+          </div>
+          <button class="primary" id="su-submit">Start tracking</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('su-submit').onclick = () => {
+      const startW = parseFloat(document.getElementById('su-start').value) || DEFAULTS.startWeight;
+      const goalW = parseFloat(document.getElementById('su-goal').value) || DEFAULTS.goalWeight;
+      state = {
+        startWeight: startW,
+        goalWeight: goalW,
+        startDate: todayStr(),
+        targets: {
+          calories: parseInt(document.getElementById('su-cal').value) || 2450,
+          protein: parseInt(document.getElementById('su-protein').value) || 202,
+          fat: parseInt(document.getElementById('su-fat').value) || 67,
+          carbs: parseInt(document.getElementById('su-carbs').value) || 270,
+          workoutMinutes: parseInt(document.getElementById('su-wmin').value) || 45,
+          walkMiles: parseFloat(document.getElementById('su-walk').value) || 2
+        },
+        entries: []
+      };
+      const ok = saveState();
+      if (!ok) alert('Your browser blocked local storage, so progress won\u2019t be saved between visits. Check that you\u2019re not in private/incognito mode.');
+      render();
+    };
+  }
+
+  function parseMacroText(text) {
+    const clean = text.replace(/,/g, '');
+    const grab = (re) => { const m = clean.match(re); return m ? parseInt(m[1], 10) : null; };
+    return {
+      calories: grab(/cal(?:ories)?[^\d]{0,15}?(\d+)/i),
+      protein: grab(/protein[^\d]{0,10}?(\d+)/i),
+      fat: grab(/\bfat[^\d]{0,10}?(\d+)/i),
+      carbs: grab(/carb(?:ohydrate)?s?[^\d]{0,10}?(\d+)/i)
+    };
+  }
+
+  function renderMain() {
+    const cw = currentWeight();
+    const totalToLose = state.startWeight - state.goalWeight;
+    const lostSoFar = fmt1(state.startWeight - cw);
+    const remaining = fmt1(cw - state.goalWeight);
+    const pctDone = totalToLose > 0 ? clampPct((lostSoFar / totalToLose) * 100) : 0;
+    const weeksRemaining = projectedWeeksRemaining();
+
+    const today = todayEntry();
+    const calToday = today ? today.calories : 0;
+    const workoutMinToday = today ? today.workoutMinutes : 0;
+    const walkMilesToday = today ? today.walkMiles : 0;
+    const pctCal = clampPct((calToday / state.targets.calories) * 100);
+    const pctWorkout = clampPct((workoutMinToday / state.targets.workoutMinutes) * 100);
+    const pctWalk = clampPct((walkMilesToday / state.targets.walkMiles) * 100);
+
+    const week = thisWeekEntries();
+    const workoutsThisWeek = week.filter(e => e.workoutMinutes > 0).length;
+    const walkDaysThisWeek = week.filter(e => e.walkMiles >= state.targets.walkMiles).length;
+
+    const sorted = sortedEntries();
+    const lastEntry = sorted[sorted.length - 1];
+    const avgCal = lastEntry ? lastEntry.calories : 0;
+    const avgProtein = lastEntry ? lastEntry.protein : 0;
+    const avgFat = lastEntry ? lastEntry.fat : 0;
+    const avgCarbs = lastEntry ? lastEntry.carbs : 0;
+
+    const macroMiniBars = [
+      { label: 'CAL', v: avgCal, t: state.targets.calories, c: '#A6FF3D' },
+      { label: 'PRO', v: avgProtein, t: state.targets.protein, c: '#35E0E0' },
+      { label: 'FAT', v: avgFat, t: state.targets.fat, c: '#FFB340' },
+      { label: 'CAR', v: avgCarbs, t: state.targets.carbs, c: '#FF375F' }
+    ];
+    const macroBars = macroMiniBars.map(m => {
+      const pct = m.t ? clampPct((m.v / m.t) * 100) : 0;
+      return `<div class="mini-bar"><div class="mini-bar-fill" style="height:${Math.max(6, pct)}%; background:${m.c};"></div></div>`;
+    }).join('');
+    const macroBarLabels = macroMiniBars.map(m => `<div class="mini-bar-label">${m.label}</div>`).join('');
+
+    let statusMain, statusSub, statusColor;
+    if (workoutsThisWeek >= 3 && walkDaysThisWeek >= 5) {
+      statusMain = 'On Track'; statusColor = 'var(--green)';
+      statusSub = `${workoutsThisWeek} workout days \u00b7 ${walkDaysThisWeek} walk days this week`;
+    } else if (workoutsThisWeek === 0 && walkDaysThisWeek === 0) {
+      statusMain = 'Not Started'; statusColor = 'var(--text-dim)';
+      statusSub = 'No sessions logged yet this week';
+    } else {
+      statusMain = 'Behind Pace'; statusColor = 'var(--pink)';
+      statusSub = `${workoutsThisWeek}/4 workout days \u00b7 ${walkDaysThisWeek}/7 walk days`;
+    }
+
+    const historyRows = sorted.slice().reverse().slice(0, 14).map((e) => {
+      const hitBoth = e.workoutMinutes >= state.targets.workoutMinutes && e.walkMiles >= state.targets.walkMiles;
+      const hitOne = e.workoutMinutes > 0 || e.walkMiles > 0;
+      const dotColor = hitBoth ? 'var(--green)' : (hitOne ? 'var(--amber)' : 'var(--text-dim)');
+      const dateObj = new Date(e.date + 'T00:00:00');
+      const dateLabel = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      const isToday = e.date === todayStr();
+      const metaParts = [];
+      if (e.weight != null) metaParts.push(e.weight + ' lb');
+      if (e.workoutMinutes) metaParts.push(e.workoutMinutes + ' min');
+      if (e.walkMiles) metaParts.push(e.walkMiles + ' mi');
+      if (e.calories) metaParts.push(e.calories + ' cal');
+      return `
+        <div class="hist-row">
+          <div class="hist-icon" style="background:${dotColor};opacity:0.9;"></div>
+          <div class="hist-main">
+            <div class="hist-date">${dateLabel}</div>
+            <div class="hist-meta">${metaParts.length ? metaParts.join(' \u00b7 ') : 'nothing logged'}</div>
+          </div>
+          <div class="hist-right">${isToday ? 'Today' : ''}</div>
+        </div>
+      `;
+    }).join('');
+
+    root.innerHTML = `
+      <div class="wrap">
+        <h1 class="page-title">FitnessCut</h1>
+        <div class="page-sub">${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+        ${!storageOK ? '<div class="warn-banner">\u26a0 Local storage isn\u2019t available — your data won\u2019t be saved between visits. Check your browser\u2019s privacy settings.</div>' : ''}
+        <div class="install-banner" id="install-banner">
+          <span>Install FitnessCut on your home screen for full-screen, one-tap access.</span>
+          <button id="install-btn">Install</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Today's Rings</div>
+          <div class="rings-row">
+            <div class="rings-svg-wrap">${buildRingsSVG(pctCal, pctWorkout, pctWalk)}</div>
+            <div class="ring-stats">
+              <div>
+                <div class="ring-stat-label" style="color:#FF375F;">Calories</div>
+                <div class="ring-stat-value">${calToday}<span class="unit">/ ${state.targets.calories}</span></div>
+              </div>
+              <div>
+                <div class="ring-stat-label" style="color:#A6FF3D;">Workout</div>
+                <div class="ring-stat-value">${workoutMinToday}<span class="unit">/ ${state.targets.workoutMinutes} MIN</span></div>
+              </div>
+              <div>
+                <div class="ring-stat-label" style="color:#35E0E0;">Walk</div>
+                <div class="ring-stat-value">${walkMilesToday}<span class="unit">/ ${state.targets.walkMiles} MI</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Weight Trend</div>
+          <div class="chart-stats">
+            <div class="stat-block"><div class="stat-num">${cw}</div><div class="stat-label">Current lb</div></div>
+            <div class="stat-block"><div class="stat-num">${lostSoFar}</div><div class="stat-label">Lost so far</div></div>
+            <div class="stat-block"><div class="stat-num">${pctDone}%</div><div class="stat-label">To goal</div></div>
+          </div>
+          ${buildElevationSVG()}
+          <div class="page-sub" style="margin:8px 0 0;">${remaining > 0 ? `${remaining} lb left to cut` : 'Goal reached — nice work'}${weeksRemaining !== null && remaining > 0 ? ` \u00b7 ~${weeksRemaining} wk left at current pace` : ''}</div>
+        </div>
+
+        <div class="grid-2">
+          <div class="metric-card">
+            <div class="metric-head">\uD83C\uDF7D\uFE0F Macros</div>
+            <div class="metric-sub">Last logged</div>
+            <div class="metric-big">${avgCal}<span class="unit">CAL</span></div>
+            <div class="mini-bars">${macroBars}</div>
+            <div class="mini-bar-labels">${macroBarLabels}</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-title" style="margin-bottom:10px;">This Week</div>
+            <div class="status-pill-row">
+              <div class="status-icon" style="background:${statusColor};opacity:0.9;"></div>
+              <div>
+                <div class="status-text-main">${statusMain}</div>
+                <div class="status-text-sub">${statusSub}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Today's Check-in</div>
+          <div class="row">
+            <div class="field"><label class="field-label">Date</label><input type="date" id="in-date" value="${todayStr()}"></div>
+            <div class="field"><label class="field-label">Weight (optional)</label><input type="number" id="in-weight" step="0.1" placeholder="lb" value="${today && today.weight != null ? today.weight : ''}"></div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label class="field-label">Workout minutes</label>
+              <input type="number" id="in-wmin" value="${workoutMinToday || ''}">
+            </div>
+            <div class="field">
+              <label class="field-label">Walk distance (mi)</label>
+              <input type="number" id="in-walk" step="0.1" value="${walkMilesToday || ''}">
+            </div>
+          </div>
+          <div class="quickset-row">
+            <div class="quickset-btn" id="qs-wmin">${state.targets.workoutMinutes} min session</div>
+            <div class="quickset-btn" id="qs-walk">${state.targets.walkMiles} mi walk</div>
+          </div>
+
+          <label class="field-label">Paste from MyFitnessPal</label>
+          <textarea class="paste-box" id="mfp-paste" placeholder="Paste today's Nutrition summary from MyFitnessPal here"></textarea>
+          <div class="parse-hint">Copy your day's totals from MyFitnessPal's Nutrition screen, paste above, then parse.</div>
+          <button class="secondary" id="mfp-parse-btn" style="margin-bottom:6px;">Parse macros</button>
+          <div class="parse-preview" id="parse-preview"></div>
+          <div class="row" style="margin-top:14px;">
+            <div class="field"><label class="field-label">Calories</label><input type="number" id="in-cal" value="${calToday || ''}"></div>
+            <div class="field"><label class="field-label">Protein (g)</label><input type="number" id="in-protein" value="${today ? today.protein || '' : ''}"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label class="field-label">Fat (g)</label><input type="number" id="in-fat" value="${today ? today.fat || '' : ''}"></div>
+            <div class="field"><label class="field-label">Carbs (g)</label><input type="number" id="in-carbs" value="${today ? today.carbs || '' : ''}"></div>
+          </div>
+          <button class="primary" id="submit-entry">Log today</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">History</div>
+          ${sorted.length === 0 ? '<div class="empty-note">No check-ins yet — log today above.</div>' : historyRows}
+        </div>
+
+        <a class="reset-link" id="reset-link">Reset all data</a>
+      </div>
+    `;
+
+    if (deferredInstallPrompt) {
+      document.getElementById('install-banner').classList.add('show');
+      document.getElementById('install-btn').onclick = async () => {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        document.getElementById('install-banner').classList.remove('show');
+      };
+    }
+
+    document.getElementById('qs-wmin').onclick = () => { document.getElementById('in-wmin').value = state.targets.workoutMinutes; };
+    document.getElementById('qs-walk').onclick = () => { document.getElementById('in-walk').value = state.targets.walkMiles; };
+
+    document.getElementById('mfp-parse-btn').onclick = () => {
+      const text = document.getElementById('mfp-paste').value;
+      if (!text.trim()) { showToast('Paste your MFP summary first'); return; }
+      const parsed = parseMacroText(text);
+      if (parsed.calories != null) document.getElementById('in-cal').value = parsed.calories;
+      if (parsed.protein != null) document.getElementById('in-protein').value = parsed.protein;
+      if (parsed.fat != null) document.getElementById('in-fat').value = parsed.fat;
+      if (parsed.carbs != null) document.getElementById('in-carbs').value = parsed.carbs;
+      const preview = document.getElementById('parse-preview');
+      const found = Object.entries(parsed).filter(([, v]) => v != null);
+      if (found.length === 0) {
+        showToast('Could not find macros in that text — enter manually below');
+        preview.classList.remove('show');
+      } else {
+        preview.innerHTML = found.map(([k, v]) => `<span class="parse-chip">${k}: ${v}${k === 'calories' ? '' : 'g'}</span>`).join('');
+        preview.classList.add('show');
+        showToast('Parsed — check the fields below');
+      }
+    };
+
+    document.getElementById('submit-entry').onclick = () => {
+      const date = document.getElementById('in-date').value;
+      if (!date) { showToast('Pick a date first'); return; }
+      const weightVal = document.getElementById('in-weight').value;
+      const entry = {
+        date,
+        weight: weightVal ? parseFloat(weightVal) : null,
+        workoutMinutes: parseInt(document.getElementById('in-wmin').value) || 0,
+        walkMiles: parseFloat(document.getElementById('in-walk').value) || 0,
+        calories: parseInt(document.getElementById('in-cal').value) || 0,
+        protein: parseInt(document.getElementById('in-protein').value) || 0,
+        fat: parseInt(document.getElementById('in-fat').value) || 0,
+        carbs: parseInt(document.getElementById('in-carbs').value) || 0
+      };
+      const existingIdx = state.entries.findIndex(e => e.date === date);
+      if (existingIdx >= 0) state.entries[existingIdx] = entry;
+      else state.entries.push(entry);
+      const ok = saveState();
+      if (ok) showToast('Day logged');
+      render();
+    };
+
+    document.getElementById('reset-link').onclick = () => {
+      if (confirm('This clears all check-ins and your targets. Continue?')) {
+        state = null;
+        try { window.localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+        render();
+      }
+    };
+  }
+
+  function render() {
+    if (loading) { root.innerHTML = '<div class="wrap"><div class="page-sub">Loading your log\u2026</div></div>'; return; }
+    if (!state) { renderSetup(); } else { renderMain(); }
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!loading) render();
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => {
+        console.warn('fitnesscut: service worker registration failed', err);
+      });
+    });
+  }
+
+  loadState();
+})();
+</script>
+</body>
+</html>
