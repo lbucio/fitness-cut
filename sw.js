@@ -1,4 +1,6 @@
-const CACHE_NAME = 'basecamp-log-v1';
+// Bump this on every deploy — it forces old caches to be cleared for anyone
+// with the app already installed on their home screen.
+const CACHE_NAME = 'fitnesscut-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -27,19 +29,19 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Cache-first for app shell, network-first fallback for anything else.
+// Network-first: always try to fetch the latest version when online, and only
+// fall back to the cached copy if the network request fails (i.e. offline).
+// This is what makes the installed home-screen app pick up updates instead of
+// being stuck on whatever was cached when it was first installed.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => cached);
-    })
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

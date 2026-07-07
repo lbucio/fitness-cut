@@ -739,10 +739,44 @@
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch((err) => {
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // Check for a newer service worker every time the app is opened, and
+        // also periodically while it stays open in the background.
+        reg.update();
+        setInterval(() => reg.update(), 60 * 60 * 1000);
+
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateBanner();
+            }
+          });
+        });
+      }).catch((err) => {
         console.warn('fitnesscut: service worker registration failed', err);
       });
+
+      // Once the new service worker takes over, reload once to guarantee the
+      // freshest HTML/JS is actually running (not just cached in memory).
+      let refreshedOnce = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshedOnce) return;
+        refreshedOnce = true;
+        window.location.reload();
+      });
     });
+  }
+
+  function showUpdateBanner() {
+    if (document.getElementById('update-banner')) return;
+    const b = document.createElement('div');
+    b.id = 'update-banner';
+    b.style.cssText = 'position:fixed;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#1C1C1E;color:#A6FF3D;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:700;z-index:20;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.4);';
+    b.textContent = '\u2b06\ufe0f New version ready — tap to update';
+    b.onclick = () => window.location.reload();
+    document.body.appendChild(b);
   }
 
   loadState();

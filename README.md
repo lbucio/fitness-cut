@@ -53,3 +53,5 @@ Notes on the screenshot feature:
 ## Updating the app later
 
 If you want changes down the road, just replace `index.html` (and any other changed files) in the repo — GitHub Pages picks up the update automatically within a minute or two of committing.
+
+**One important step: bump the cache version in `sw.js` on every update.** Open `sw.js` and change the `CACHE_NAME` line to a new value (e.g. `'fitnesscut-v2'` → `'fitnesscut-v3'`) any time you update the app. This tells the installed home-screen app to clear its old cached copy and fetch the new one — otherwise it may keep showing stale content for a while, especially on iOS. When it detects a new version, the app will show a small "New version ready — tap to update" banner at the top.
