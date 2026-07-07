@@ -1,6 +1,6 @@
 // Bump this on every deploy — it forces old caches to be cleared for anyone
 // with the app already installed on their home screen.
-const CACHE_NAME = 'fitnesscut-v3';
+const CACHE_NAME = 'fitnesscut-v5';
 const ASSETS = [
   './',
   './index.html',

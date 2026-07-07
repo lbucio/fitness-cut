@@ -428,11 +428,8 @@
     // OCR on a side-by-side Carbs/Fat/Protein layout often reads the whole
     // header row first, then the whole value row — so "Fat" in the text can
     // end up sitting right next to Carbs's number, not its own. Simple
-    // "keyword, then nearest digit" matching gets that wrong. Instead: find
-    // where each label word appears (left-to-right order), find every
-    // "<number> g" value in the text (in the order they appear), and pair
-    // them up positionally — which matches how these values are laid out
-    // on screen even when OCR's reading order scrambles the raw text.
+    // "keyword, then nearest digit" matching gets that wrong, so we rely on
+    // structure instead.
     const labelRegexes = {
       protein: /protein/i,
       fat: /\bfat\b/i,
@@ -445,19 +442,47 @@
     }
     labelPositions.sort((a, b) => a.index - b.index);
 
-    const gramMatches = [...clean.matchAll(/(\d+)\s*g\b/gi)].map(m => parseInt(m[1], 10));
+    // Primary strategy: each macro is shown as "<actual> [g] / <target>".
+    // The "g" is made optional here because OCR sometimes mangles it into a
+    // stray digit (e.g. "33g" misread as "339") — if that happens, the actual
+    // number comes out larger than its own target, which is a physically
+    // implausible read (can't have eaten more fat than your whole day's
+    // target in one meal), so trimming the trailing digit and re-checking
+    // recovers the real value.
+    const pairMatches = [...clean.matchAll(/(\d+)\s*g?\s*\/\s*(\d+)/gi)].map(m => {
+      let actual = parseInt(m[1], 10);
+      const target = parseInt(m[2], 10);
+      if (target > 0 && actual > target) {
+        const trimmed = parseInt(String(actual).slice(0, -1), 10);
+        if (!isNaN(trimmed) && trimmed > 0 && trimmed <= target) actual = trimmed;
+      }
+      return actual;
+    });
 
-    const result = { calories, protein: null, fat: null, carbs: null };
+    // A calories "<num> / <target>" pair can also match the pattern above, so
+    // if we picked up 4 pairs, assume the first is calories and drop it.
+    let macroValues = pairMatches;
+    if (pairMatches.length > 3) macroValues = pairMatches.slice(-3);
 
-    if (labelPositions.length === 3 && gramMatches.length === 3) {
-      labelPositions.forEach((label, i) => { result[label.key] = gramMatches[i]; });
+    const result = { calories, carbs: null, fat: null, protein: null };
+
+    if (labelPositions.length === 3 && macroValues.length === 3) {
+      labelPositions.forEach((label, i) => { result[label.key] = macroValues[i]; });
+    } else if (macroValues.length === 3) {
+      // No usable label positions, but exactly 3 values — assume the
+      // standard Carbs / Fat / Protein screen order.
+      result.carbs = macroValues[0]; result.fat = macroValues[1]; result.protein = macroValues[2];
     } else {
-      // Fewer/more numbers than labels (e.g. a plain typed sentence, or a
-      // screen with extra sub-items like fiber/sugar) — fall back to the
-      // simpler adjacency match per macro.
-      if (result.protein == null) result.protein = grab(/protein[^\d]{0,10}?(\d+)/i);
-      if (result.fat == null) result.fat = grab(/\bfat[^\d]{0,10}?(\d+)/i);
-      if (result.carbs == null) result.carbs = grab(/carb(?:ohydrate)?s?[^\d]{0,10}?(\d+)/i);
+      // Last-resort fallbacks for text that doesn't match the "/" pair shape
+      // at all (e.g. a plain typed sentence).
+      const gramMatches = [...clean.matchAll(/(\d+)\s*g\b/gi)].map(m => parseInt(m[1], 10));
+      if (labelPositions.length === 3 && gramMatches.length === 3) {
+        labelPositions.forEach((label, i) => { result[label.key] = gramMatches[i]; });
+      } else {
+        result.protein = grab(/protein[^\d]{0,10}?(\d+)/i);
+        result.fat = grab(/\bfat[^\d]{0,10}?(\d+)/i);
+        result.carbs = grab(/carb(?:ohydrate)?s?[^\d]{0,10}?(\d+)/i);
+      }
     }
 
     return result;
@@ -492,9 +517,9 @@
 
     const macroMiniBars = [
       { label: 'CAL', v: avgCal, t: state.targets.calories, c: '#A6FF3D' },
-      { label: 'PRO', v: avgProtein, t: state.targets.protein, c: '#35E0E0' },
+      { label: 'CAR', v: avgCarbs, t: state.targets.carbs, c: '#FF375F' },
       { label: 'FAT', v: avgFat, t: state.targets.fat, c: '#FFB340' },
-      { label: 'CAR', v: avgCarbs, t: state.targets.carbs, c: '#FF375F' }
+      { label: 'PRO', v: avgProtein, t: state.targets.protein, c: '#35E0E0' }
     ];
     const macroBars = macroMiniBars.map(m => {
       const pct = m.t ? clampPct((m.v / m.t) * 100) : 0;
@@ -635,11 +660,11 @@
           <div class="parse-preview" id="parse-preview"></div>
           <div class="row" style="margin-top:14px;">
             <div class="field"><label class="field-label">Calories</label><input type="number" id="in-cal" value="${calToday || ''}"></div>
-            <div class="field"><label class="field-label">Protein (g)</label><input type="number" id="in-protein" value="${today ? today.protein || '' : ''}"></div>
+            <div class="field"><label class="field-label">Carbs (g)</label><input type="number" id="in-carbs" value="${today ? today.carbs || '' : ''}"></div>
           </div>
           <div class="row">
             <div class="field"><label class="field-label">Fat (g)</label><input type="number" id="in-fat" value="${today ? today.fat || '' : ''}"></div>
-            <div class="field"><label class="field-label">Carbs (g)</label><input type="number" id="in-carbs" value="${today ? today.carbs || '' : ''}"></div>
+            <div class="field"><label class="field-label">Protein (g)</label><input type="number" id="in-protein" value="${today ? today.protein || '' : ''}"></div>
           </div>
           <button class="primary" id="submit-entry">Log today</button>
         </div>
