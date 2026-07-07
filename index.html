@@ -97,8 +97,8 @@
   .metric-big { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 10px; }
   .metric-big .unit { font-size: 13px; font-weight: 700; color: var(--text-soft); margin-left: 3px; }
 
-  .mini-bars { display: flex; align-items: flex-end; gap: 4px; height: 46px; }
-  .mini-bar { flex: 1; border-radius: 3px; background: var(--card-2); position: relative; min-height: 4px; }
+  .mini-bars { display: flex; align-items: stretch; gap: 4px; height: 46px; }
+  .mini-bar { flex: 1; border-radius: 3px; background: var(--card-2); position: relative; overflow: hidden; }
   .mini-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 3px; }
   .mini-bar-label { font-size: 9.5px; color: var(--text-dim); text-align: center; margin-top: 4px; font-weight: 700; }
   .mini-bar-labels { display: flex; gap: 4px; }
@@ -119,11 +119,12 @@
   .empty-note { font-size: 13px; color: var(--text-soft); padding: 4px 0; }
 
   label.field-label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); margin-bottom: 6px; font-weight: 700; }
-  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items: flex-start; }
   .field { flex: 1; min-width: 130px; }
   input[type=number], input[type=date] {
-    width: 100%; padding: 11px 12px; border: none; border-radius: var(--radius-sm);
+    width: 100%; height: 46px; padding: 0 12px; border: none; border-radius: var(--radius-sm);
     background: var(--card-2); font-size: 15px; color: var(--text); font-weight: 600;
+    -webkit-appearance: none; appearance: none; box-sizing: border-box;
   }
   input:focus { outline: 2px solid var(--green); outline-offset: 1px; }
 
