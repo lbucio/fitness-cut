@@ -422,12 +422,45 @@
   function parseMacroText(text) {
     const clean = text.replace(/,/g, '');
     const grab = (re) => { const m = clean.match(re); return m ? parseInt(m[1], 10) : null; };
-    return {
-      calories: grab(/cal(?:ories)?[^\d]{0,15}?(\d+)/i),
-      protein: grab(/protein[^\d]{0,10}?(\d+)/i),
-      fat: grab(/\bfat[^\d]{0,10}?(\d+)/i),
-      carbs: grab(/carb(?:ohydrate)?s?[^\d]{0,10}?(\d+)/i)
+
+    const calories = grab(/cal(?:ories)?[^\d]{0,15}?(\d+)/i);
+
+    // OCR on a side-by-side Carbs/Fat/Protein layout often reads the whole
+    // header row first, then the whole value row — so "Fat" in the text can
+    // end up sitting right next to Carbs's number, not its own. Simple
+    // "keyword, then nearest digit" matching gets that wrong. Instead: find
+    // where each label word appears (left-to-right order), find every
+    // "<number> g" value in the text (in the order they appear), and pair
+    // them up positionally — which matches how these values are laid out
+    // on screen even when OCR's reading order scrambles the raw text.
+    const labelRegexes = {
+      protein: /protein/i,
+      fat: /\bfat\b/i,
+      carbs: /carb(?:ohydrate)?s?/i
     };
+    const labelPositions = [];
+    for (const [key, re] of Object.entries(labelRegexes)) {
+      const m = clean.match(re);
+      if (m) labelPositions.push({ key, index: m.index });
+    }
+    labelPositions.sort((a, b) => a.index - b.index);
+
+    const gramMatches = [...clean.matchAll(/(\d+)\s*g\b/gi)].map(m => parseInt(m[1], 10));
+
+    const result = { calories, protein: null, fat: null, carbs: null };
+
+    if (labelPositions.length === 3 && gramMatches.length === 3) {
+      labelPositions.forEach((label, i) => { result[label.key] = gramMatches[i]; });
+    } else {
+      // Fewer/more numbers than labels (e.g. a plain typed sentence, or a
+      // screen with extra sub-items like fiber/sugar) — fall back to the
+      // simpler adjacency match per macro.
+      if (result.protein == null) result.protein = grab(/protein[^\d]{0,10}?(\d+)/i);
+      if (result.fat == null) result.fat = grab(/\bfat[^\d]{0,10}?(\d+)/i);
+      if (result.carbs == null) result.carbs = grab(/carb(?:ohydrate)?s?[^\d]{0,10}?(\d+)/i);
+    }
+
+    return result;
   }
 
   function renderMain() {
