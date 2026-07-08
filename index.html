@@ -112,12 +112,16 @@
   .status-text-main { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
   .status-text-sub { font-size: 12.5px; color: var(--text-soft); font-weight: 600; margin-top: 1px; }
 
-  .hist-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .hist-row { display: flex; align-items: center; gap: 13px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
   .hist-row:last-child { border-bottom: none; }
-  .hist-icon { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .hist-rings { width: 50px; height: 50px; flex-shrink: 0; }
   .hist-main { flex: 1; min-width: 0; }
-  .hist-date { font-size: 14.5px; font-weight: 700; }
-  .hist-meta { font-size: 12px; color: var(--text-soft); font-weight: 600; margin-top: 1px; }
+  .hist-date { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+  .hist-today-badge { font-size: 10px; font-weight: 800; color: var(--green); background: rgba(166,255,61,0.14); padding: 1px 7px; border-radius: 999px; letter-spacing: 0.03em; }
+  .hist-accomplish { display: flex; gap: 13px; font-size: 12px; font-weight: 700; margin-top: 4px; }
+  .hist-accomplish .done { color: var(--green); }
+  .hist-accomplish .miss { color: var(--text-dim); }
+  .hist-macros { display: flex; gap: 11px; font-size: 11.5px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
   .hist-right { text-align: right; font-size: 13px; font-weight: 700; color: var(--text-soft); flex-shrink: 0; }
   .empty-note { font-size: 13px; color: var(--text-soft); padding: 4px 0; }
 
@@ -205,10 +209,20 @@
 <script>
 (function () {
   const STORAGE_KEY = 'fitnesscut-tracker-data';
+  // Read the user's own time zone from their device/browser settings so the
+  // app's idea of "today" matches their local calendar day.
+  function userTimeZone() {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz) return tz;
+    } catch (e) { /* fall back to the runtime's local zone below */ }
+    return undefined;
+  }
+
   const DEFAULTS = {
     startWeight: 210,
     goalWeight: 185,
-    startDate: new Date().toISOString().slice(0, 10),
+    startDate: todayStr(),
     targets: { calories: 2450, protein: 202, fat: 67, carbs: 270, workoutMinutes: 45, walkMiles: 2 },
     entries: []
   };
@@ -221,7 +235,11 @@
   const root = document.getElementById('app-root');
 
   function fmt1(n) { return Math.round(n * 10) / 10; }
-  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  // The user's local calendar date as YYYY-MM-DD. Using toISOString() here
+  // would return the UTC date, which flips to "tomorrow" for anyone in a
+  // negative-offset zone during their evening — the bug this replaces. The
+  // 'en-CA' locale renders dates in ISO (YYYY-MM-DD) order.
+  function todayStr() { return new Date().toLocaleDateString('en-CA', { timeZone: userTimeZone() }); }
   function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
   function weekIndexOf(dateStr) { return Math.floor(daysBetween(state.startDate, dateStr) / 7); }
   function clampPct(n) { return Math.max(0, Math.min(100, n)); }
@@ -570,25 +588,42 @@
     }
 
     const historyRows = sorted.slice().reverse().slice(0, 14).map((e) => {
-      const hitBoth = e.workoutMinutes >= state.targets.workoutMinutes && e.walkMiles >= state.targets.walkMiles;
-      const hitOne = e.workoutMinutes > 0 || e.walkMiles > 0;
-      const dotColor = hitBoth ? 'var(--green)' : (hitOne ? 'var(--amber)' : 'var(--text-dim)');
+      // Same ring percentages this day earned, so the history mirrors the
+      // Today's Rings card for each past day.
+      const hPctCal = state.targets.calories ? (e.calories / state.targets.calories) * 100 : 0;
+      const hPctWorkout = state.targets.workoutMinutes ? (e.workoutMinutes / state.targets.workoutMinutes) * 100 : 0;
+      const hPctWalk = state.targets.walkMiles ? (e.walkMiles / state.targets.walkMiles) * 100 : 0;
+
+      const workoutDone = e.workoutMinutes > 0 && e.workoutMinutes >= state.targets.workoutMinutes;
+      const walkDone = e.walkMiles > 0 && e.walkMiles >= state.targets.walkMiles;
+
+      const carbsPct = state.targets.carbs ? Math.round((e.carbs / state.targets.carbs) * 100) : 0;
+      const fatPct = state.targets.fat ? Math.round((e.fat / state.targets.fat) * 100) : 0;
+      const proteinPct = state.targets.protein ? Math.round((e.protein / state.targets.protein) * 100) : 0;
+      const hasMacros = e.calories > 0 || e.carbs > 0 || e.fat > 0 || e.protein > 0;
+
       const dateObj = new Date(e.date + 'T00:00:00');
       const dateLabel = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
       const isToday = e.date === todayStr();
-      const metaParts = [];
-      if (e.weight != null) metaParts.push(e.weight + ' lb');
-      if (e.workoutMinutes) metaParts.push(e.workoutMinutes + ' min');
-      if (e.walkMiles) metaParts.push(e.walkMiles + ' mi');
-      if (e.calories) metaParts.push(e.calories + ' cal');
+
+      const macrosLine = hasMacros
+        ? `<span style="color:#FF375F;">C ${carbsPct}%</span>` +
+          `<span style="color:#FFB340;">F ${fatPct}%</span>` +
+          `<span style="color:#35E0E0;">P ${proteinPct}%</span>`
+        : '<span style="color:var(--text-dim);">No macros logged</span>';
+
       return `
         <div class="hist-row">
-          <div class="hist-icon" style="background:${dotColor};opacity:0.9;"></div>
+          <div class="hist-rings">${buildRingsSVG(hPctCal, hPctWorkout, hPctWalk)}</div>
           <div class="hist-main">
-            <div class="hist-date">${dateLabel}</div>
-            <div class="hist-meta">${metaParts.length ? metaParts.join(' \u00b7 ') : 'nothing logged'}</div>
+            <div class="hist-date">${dateLabel}${isToday ? '<span class="hist-today-badge">TODAY</span>' : ''}</div>
+            <div class="hist-accomplish">
+              <span class="${workoutDone ? 'done' : 'miss'}">${workoutDone ? '\u2713' : '\u25cb'} Workout</span>
+              <span class="${walkDone ? 'done' : 'miss'}">${walkDone ? '\u2713' : '\u25cb'} Walk</span>
+            </div>
+            <div class="hist-macros">${macrosLine}</div>
           </div>
-          <div class="hist-right">${isToday ? 'Today' : ''}</div>
+          <div class="hist-right">${e.weight != null ? e.weight + ' lb' : ''}</div>
         </div>
       `;
     }).join('');
